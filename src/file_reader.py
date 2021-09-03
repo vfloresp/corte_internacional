@@ -2,6 +2,7 @@ from PyPDF2 import PdfFileReader
 from icecream import ic
 from case_reader import CaseReader
 import pandas as pd
+import numpy as np
 import os
 import re
 
@@ -10,38 +11,44 @@ class FileReader():
 
     def __init__(self, path):
         self.path = path
-        self.num_cita = 0
-        self.df_citas_complete = pd.DataFrame()
-        self.df_citas = pd.DataFrame()
 
     def read_files(self):
-        """
+        citas_complete = []
         for root, _, files in os.walk(self.path):
             for file in files:
                 path = os.path.join(root, file)
-                pdf_file = PdfFileReader(path)
-                self.read_file(pdf_file)
-                """
-        filename = 'Corte IDH Caso Martínez Esquivia Vs Colombia Interpretación de la Sentencia de Excepciones preliminares Fondo y Reparaciones Sentencia de 21 de junio de 2021 Serie C No. 428.pdf'
+                cr = CaseReader(file)
+                num_caso = cr.get_id(file)
+                if int(num_caso) > 67:
+                    ic('Procesando: ', file)
+                    pdf_file = PdfFileReader(path)
+                    citas_file = self.read_file(pdf_file)
+                    if citas_file:
+                        citas_complete += citas_file
+        self.save_citas_complete(citas_complete, num_caso)
+        """
+        filename = 'Corte IDH. Caso Vélez Loor Vs. Panamá. Excepciones Preliminares, Fondo, Reparaciones y Costas. Sentencia de 23 de noviembre de 2010. Serie C No. 218'
         cr = CaseReader(filename)
         num_caso = cr.get_id(filename)
-        if num_caso > 67:
+        if int(num_caso) > 67:
             pdf_file = PdfFileReader(
-                '/Storage/CIAJ/corte_internacional/files/Corte IDH Caso Martínez Esquivia Vs Colombia Interpretación de la Sentencia de Excepciones preliminares Fondo y Reparaciones Sentencia de 21 de junio de 2021 Serie C No. 428.pdf')
+                '/Storage/CIAJ/corte_internacional/files/Corte IDH. Caso Vélez Loor Vs. Panamá. Excepciones Preliminares, Fondo, Reparaciones y Costas. Sentencia de 23 de noviembre de 2010. Serie C No. 218.pdf')
             self.read_file(pdf_file, num_caso)
+            ic('Procesando: ', filename)
+        """
 
-    def read_file(self, pdf_file, num_caso):
+    def read_file(self, pdf_file):
         n = pdf_file.getNumPages()
-        citas_complete = []
+        citas_file = []
         for i in range(1, n):
             page = pdf_file.getPage(i)
             text = page.extractText()
-            citas_page = self.process_text(text, num_caso)
+            citas_page = self.process_text(text)
             if citas_page:
-                citas_complete += citas_page
-        self.save_citas_complete(citas_complete, num_caso)
+                citas_file += citas_page
+        return citas_file
 
-    def process_text(self, text, num_caso):
+    def process_text(self, text):
         text_list = text.split()
         citas_page = self.get_citas(text_list)
         return citas_page
@@ -59,8 +66,10 @@ class FileReader():
         finCita = False
         for string in text_reversed:
             if finCita:
-                cita['num'] = int(string)
-                #self.num_cita = cita['num']
+                try:
+                    cita['num'] = int(string)
+                except:
+                    cita['num'] = np.nan
                 cita['texto'] = self.inverted_list_to_text(texto)
                 citas.append(cita)
                 cita = {'texto': '', 'num': None}
