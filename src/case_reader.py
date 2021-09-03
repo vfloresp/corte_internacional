@@ -8,7 +8,7 @@ import os
 class CaseReader():
     COLS = ['id_sentencia', 'caso_nombre', 'fecha']
 
-    def __init__(self, path):
+    def __init__(self, path=None):
         self.df_cases = pd.DataFrame(columns=self.COLS)
         self.path = path
 
@@ -34,6 +34,13 @@ class CaseReader():
 
     def get_nombre(self, file_name):
         nombre = re.search(r'(?<=Caso)[^\.]*.[^\.]*', file_name)[0]
+        not_contains_vs = not 'Vs.' in nombre
+        ends_vs = nombre.split(' ')[-1] == 'Vs.'
+        if ends_vs:
+            nombre = re.search(r'(?<=Caso)[^\.]*.[^\.]*.[^\.]*', file_name)[0]
+        elif not_contains_vs:
+            nombre = re.search(
+                r'(?<=Caso)[^\.]*.[^\.]*.[^\.]*.[^\.]*', file_name)[0]
         return nombre
 
     def get_fecha(self, file_name):
